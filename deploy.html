@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<script src="/config.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Deploy · Inferno</title>
+<link rel="icon" href="/assets/favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Doto:wght@700;900&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/inferno.css">
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <a class="brand" href="/"><img src="/assets/mark.webp" alt=""><b>INFERNO</b></a>
+  <nav><span class="note" id="who" style="margin:0"></span><button class="btn sm em" id="connect" type="button">Connect</button></nav>
+</div></header>
+<section class="band"><div class="wrap" style="max-width:760px">
+  <div class="sh"><h2>Deploy</h2><p>The wallet that deploys the vault owns it and is its first keeper</p></div>
+  <div class="box">
+    <div class="row"><button class="btn em" data-step="deploy" disabled>Deploy vault</button><span class="note" id="s-deploy" style="margin:0"></span></div>
+    <div class="f" style="margin-top:16px"><label for="vault">Vault</label><input id="vault" placeholder="0x…"></div>
+    <div class="kv" id="state"></div>
+  </div>
+  <div class="box" style="margin-top:14px">
+    <div class="f"><label for="inferno">$INFERNO token, once launched on Pons</label><div class="row"><input id="inferno" placeholder="0x…" style="flex:1"><button class="btn" data-step="setInferno" disabled>Set</button></div></div>
+    <div class="note" id="s-setInferno"></div>
+    <div class="f"><label for="keeper">Keeper wallet</label><div class="row"><input id="keeper" placeholder="0x…" style="flex:1"><button class="btn" data-step="setKeeper" disabled>Set</button></div></div>
+    <div class="note" id="s-setKeeper"></div>
+    <div class="row"><button class="btn" data-step="setTarget" disabled>Allow Universal Router for graduated burns</button><span class="note" id="s-setTarget" style="margin:0"></span></div>
+  </div>
+  <pre class="answer" id="out" hidden></pre>
+</div></section>
+<script type="module">
+import * as W from '/lib/wallet.js';
+import { VAULT } from '/lib/addresses.js';
+import { explorer } from '/lib/chains.js';
+const $ = id => document.getElementById(id);
+const V = await fetch('/lib/abi/InfernoVault.json?v=1').then(r => r.json());
+const UR = '0x8876789976dEcBfCbBbe364623C63652db8C0904';
+const isAddr = v => /^0x[0-9a-fA-F]{40}$/.test(v || '');
+let saved = ''; try { saved = localStorage.getItem('inferno:vault') || ''; } catch {}
+$('vault').value = VAULT || saved;
+const vault = () => $('vault').value.trim();
+
+async function paint() {
+  const w = W.state();
+  $('who').textContent = w.address ? W.short(w.address) : '';
+  $('connect').textContent = w.address ? 'Connected' : 'Connect';
+  document.querySelectorAll('[data-step]').forEach(b => b.disabled = !w.address || (b.dataset.step !== 'deploy' && !isAddr(vault())));
+  if (!isAddr(vault())) { $('state').innerHTML = ''; $('out').hidden = true; return; }
+  const read = f => W.pubs[4663].readContract({ address: vault(), abi: V.abi, functionName: f }).catch(() => null);
+  const [owner, keeper, inferno, target] = await Promise.all([read('owner'), read('keeper'), read('inferno'), W.pubs[4663].readContract({ address: vault(), abi: V.abi, functionName: 'allowedTarget', args: [UR] }).catch(() => null)]);
+  $('state').innerHTML = [['Owner', owner], ['Keeper', keeper], ['$INFERNO', inferno], ['Universal Router allowed', String(target)]].map(([k, v]) => `<div><span>${k}</span><b>${v || '·'}</b></div>`).join('');
+  $('out').hidden = false;
+  $('out').textContent = `lib/addresses.js\n\nexport const VAULT = '${vault()}';`;
+}
+async function wait(el, tx) {
+  el.innerHTML = `sent · <a href="${explorer(4663, 'tx', tx.hash)}" target="_blank" rel="noopener">tx</a> · waiting`;
+  const rc = await tx.wait();
+  if (rc.status !== 'success') throw Error('Transaction failed');
+  el.innerHTML = '<span class="okt">done</span>';
+  return rc;
+}
+const steps = {
+  deploy: async el => { el.textContent = 'confirm in wallet'; const rc = await wait(el, await W.sendTx(4663, { data: V.bytecode })); $('vault').value = rc.contractAddress; try { localStorage.setItem('inferno:vault', rc.contractAddress); } catch {} },
+  setInferno: async el => { const v = $('inferno').value.trim(); if (!isAddr(v)) throw Error('Enter the $INFERNO address'); el.textContent = 'confirm in wallet'; await wait(el, await W.send(4663, { address: vault(), abi: V.abi, functionName: 'setInferno', args: [v] })); },
+  setKeeper: async el => { const v = $('keeper').value.trim(); if (!isAddr(v)) throw Error('Enter the keeper wallet'); el.textContent = 'confirm in wallet'; await wait(el, await W.send(4663, { address: vault(), abi: V.abi, functionName: 'setKeeper', args: [v] })); },
+  setTarget: async el => { el.textContent = 'confirm in wallet'; await wait(el, await W.send(4663, { address: vault(), abi: V.abi, functionName: 'setTarget', args: [UR, true] })); }
+};
+document.querySelectorAll('[data-step]').forEach(b => b.onclick = async () => {
+  const el = $('s-' + b.dataset.step);
+  b.disabled = true;
+  try { await steps[b.dataset.step](el); } catch (e) { el.innerHTML = '<span style="color:var(--bad)">' + (e.shortMessage || e.message || e) + '</span>'; }
+  await paint();
+});
+$('vault').oninput = paint;
+$('connect').onclick = () => W.connect().then(paint).catch(e => $('s-deploy').textContent = e.shortMessage || e.message);
+W.onChange(paint); W.restore().then(paint);
+</script>
+</body>
+</html>

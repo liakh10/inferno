@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<script src="/config.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Docs · Inferno</title>
+<meta name="description" content="How Inferno binds tokens to AI models and burns them with every prompt">
+<link rel="icon" href="/assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Doto:wght@700;900&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/inferno.css">
+<style>
+.docs{display:grid;grid-template-columns:220px 1fr;gap:40px;padding-top:48px;padding-bottom:110px}
+.side{position:sticky;top:84px;align-self:start;display:grid;gap:4px}
+.chip{display:inline-block;font-size:11px;letter-spacing:.2em;color:var(--ember2);border:1px solid var(--line2);border-radius:99px;padding:4px 10px;margin-bottom:14px;width:max-content}
+.side a{color:var(--dim);text-decoration:none;font-size:13px;padding:4px 10px;border-left:2px solid transparent;white-space:nowrap}
+.side a.on{color:var(--ink);border-left-color:var(--ember)}
+.doc section{padding:8px 0 38px;border-bottom:1px solid var(--line);margin-bottom:34px;scroll-margin-top:84px}
+.doc h2{font:900 clamp(30px,4vw,44px)/1.05 var(--display);margin:0 0 14px}
+.doc p{color:#d8cbc3;max-width:720px;margin:0 0 12px}
+.doc .kv{max-width:720px}
+.doc .kv b{min-width:0;overflow-wrap:anywhere}
+.doc .kv span{flex:none;max-width:45%}
+.tree{white-space:pre;color:var(--dim);font-size:13px;margin:10px 0 0;overflow-x:auto}
+.doc a{color:var(--ember2)}
+@media (max-width:900px){.docs{grid-template-columns:1fr}.side{position:static;grid-auto-flow:column;overflow-x:auto;padding-bottom:6px}.side .chip{display:none}}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <a class="brand" href="/"><img src="/assets/mark.webp" alt=""><b>INFERNO</b></a>
+  <nav><a href="/#models">Models</a><a class="hide-m" href="/#launch">Launch</a><a class="btn sm em" id="buyTop" target="_blank" rel="noopener">Buy</a><a class="btn sm" id="xTop" target="_blank" rel="noopener" aria-label="X"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a></nav>
+</div></header>
+
+<div class="wrap docs">
+  <aside class="side" id="side">
+    <span class="chip">FIELD MANUAL</span>
+    <a href="#overview">Overview</a>
+    <a href="#launch">Launch</a>
+    <a href="#models">Models</a>
+    <a href="#prompts">Prompts</a>
+    <a href="#burns">Fuel and burns</a>
+    <a href="#sink">$INFERNO sink</a>
+    <a href="#graduation">Graduation</a>
+    <a href="#contracts">Contracts</a>
+    <a href="#faq">FAQ</a>
+  </aside>
+  <main class="doc">
+    <section id="overview">
+      <h2>Overview</h2>
+      <p>Inferno is a launchpad on Robinhood Chain for tokens bound to AI models. Each token is a normal Pons V2 launch whose description names one OpenRouter model</p>
+      <p>Anyone can ask that model a question by paying ETH per prompt. The payment goes into the Inferno vault, and the vault can only spend it buying the same token and sending it to the dead address</p>
+      <div class="kv">
+        <div><span>Chain</span><b>Robinhood Chain, id 4663</b></div>
+        <div><span>Launchpad</span><b>Pons V2</b></div>
+        <div><span>Supply per token</span><b>1,000,000,000</b></div>
+        <div><span>Split of a prompt payment</span><b>80% token fuel, 20% $INFERNO sink</b></div>
+      </div>
+    </section>
+
+    <section id="launch">
+      <h2>Launch</h2>
+      <p>The launch form calls the Pons V2 factory from your wallet. With a first buy it calls Pons launchAndBuy, which creates the token and makes the opening buy in one transaction, so nobody trades between the two</p>
+      <p>The description starts with a line <b>Model: &lt;openrouter id&gt;</b>. After the transaction confirms, the Inferno API reads it from the chain and lists the token. The API never takes token data from the browser, only the transaction hash</p>
+      <div class="kv">
+        <div><span>Launch fee</span><b>Set by Pons, read live on the launch form</b></div>
+        <div><span>Curve fee</span><b>Set by Pons, read live on the launch form</b></div>
+        <div><span>Creator fees</span><b>Your wallet</b></div>
+        <div><span>Creator tax</span><b>0</b></div>
+        <div><span>Logo</span><b>Stored by Inferno, linked on chain by https URL</b></div>
+      </div>
+    </section>
+
+    <section id="models">
+      <h2>Models</h2>
+      <p>A token can be bound to one of these models. The prompt price covers a full 1,000 token prompt and an 800 token answer at OpenRouter list price plus 20%, converted at a floor of 2,000 USD per ETH</p>
+      <div class="kv" id="modelRows"></div>
+    </section>
+
+    <section id="prompts">
+      <h2>Prompts</h2>
+      <p>Your wallet calls feed on the vault with the token address and the keccak256 hash of your prompt, paying the prompt price. The API then checks that transaction on chain: right vault, right token, right prompt hash, enough ETH, less than an hour old. Each payment gets one answer</p>
+      <p>If the model fails to answer, the payment stays valid and the page offers to retry with the same transaction. Prompts are up to 4,000 characters and answers up to 800 tokens</p>
+      <div class="tree">feed(token, keccak256(prompt)) + ETH
+├── 80%  fuel[token]
+└── 20%  sinkFuel</div>
+    </section>
+
+    <section id="burns">
+      <h2>Fuel and burns</h2>
+      <p>While a token trades on its Pons bonding curve, anyone can call burn on the vault. The vault buys the token on its own curve with the fuel and the curve delivers the tokens straight to the dead address in the same call</p>
+      <p>The caller sets a minimum output, which has to be above zero, and the site sets it 3% under a fresh quote. Refunds from a partially filled buy stay with the token. The vault has no withdraw function</p>
+      <div class="kv">
+        <div><span>Who can burn</span><b>Anyone</b></div>
+        <div><span>Where tokens go</span><b>0x000000000000000000000000000000000000dEaD</b></div>
+        <div><span>Recorded on chain</span><b>fuel, burnedEth, burnedTokens, fedTotal per token</b></div>
+      </div>
+    </section>
+
+    <section id="sink">
+      <h2>$INFERNO sink</h2>
+      <p>20% of every prompt payment waits in the sink until $INFERNO is set on the vault. From then on anyone can call burnSink, which buys $INFERNO on its Pons curve and burns it the same way. $INFERNO can be set once</p>
+    </section>
+
+    <section id="graduation">
+      <h2>Graduation</h2>
+      <p>When a curve fills, Pons graduates the token into a Uniswap v4 pool and the curve stops selling. Fuel of a graduated token is spent by the keeper through the Universal Router, and the vault sends every token it receives to the dead address in the same transaction. The keeper can only use swap contracts the owner allowed</p>
+    </section>
+
+    <section id="contracts">
+      <h2>Contracts</h2>
+      <div class="kv">
+        <div><span>Inferno vault</span><b id="aVault">Not deployed yet</b></div>
+        <div><span>Pons V2 factory</span><b><a href="https://robinhoodchain.blockscout.com/address/0x7eD598BcEf8bd9Edd8C97A195C6d13f40801EC7e" target="_blank" rel="noopener">0x7eD598BcEf8bd9Edd8C97A195C6d13f40801EC7e</a></b></div>
+        <div><span>Pons V2 launch and buy</span><b><a href="https://robinhoodchain.blockscout.com/address/0xe33E9E479dF8802cb0866d5d05258bEc4cF62948" target="_blank" rel="noopener">0xe33E9E479dF8802cb0866d5d05258bEc4cF62948</a></b></div>
+        <div><span>Universal Router</span><b>0x8876789976dEcBfCbBbe364623C63652db8C0904</b></div>
+        <div><span>$INFERNO</span><b id="aCa">soon</b></div>
+      </div>
+    </section>
+
+    <section id="faq" style="border-bottom:0">
+      <h2>FAQ</h2>
+      <div class="kv">
+        <div><span>Is the answer stored</span><b>Only its text for a week, so a retry returns the same answer</b></div>
+        <div><span>Can the team take the ETH</span><b>No, the vault can only buy and burn</b></div>
+        <div><span>What if nobody presses burn</span><b>Fuel waits in the vault for the next caller</b></div>
+        <div><span>Can one token burn another</span><b>No, fuel is kept per token</b></div>
+      </div>
+    </section>
+  </main>
+</div>
+<script type="module">
+import { MODELS, priceWei } from '/lib/models.js';
+import { VAULT } from '/lib/addresses.js';
+const $ = id => document.getElementById(id);
+const S = window.SITE, CA = /^0x[0-9a-fA-F]{40}$/.test(S.CA) ? S.CA : null;
+$('xTop').href = S.X_URL;
+$('buyTop').href = CA ? 'https://www.ponsfamily.com/launchpad/' + CA : window.PONS_HOME;
+$('aCa').textContent = CA || 'soon';
+if (VAULT) $('aVault').innerHTML = `<a href="https://robinhoodchain.blockscout.com/address/${VAULT}" target="_blank" rel="noopener">${VAULT}</a>`;
+$('modelRows').innerHTML = MODELS.map(m => `<div><span>${m.name} · ${m.lab}</span><b>${m.id} · ${(Number(priceWei(m)) / 1e18).toFixed(6)} ETH</b></div>`).join('');
+const links = [...document.querySelectorAll('#side a')];
+const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) links.forEach(a => a.classList.toggle('on', a.getAttribute('href') === '#' + e.target.id)); }), { rootMargin: '-40% 0px -55% 0px' });
+document.querySelectorAll('.doc section').forEach(s => io.observe(s));
+</script>
+</body>
+</html>

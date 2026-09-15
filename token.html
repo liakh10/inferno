@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<script src="/config.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Model · Inferno</title>
+<link rel="icon" href="/assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Doto:wght@700;900&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/inferno.css">
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <a class="brand" href="/"><img src="/assets/mark.webp" alt=""><b>INFERNO</b></a>
+  <nav>
+    <a class="hide-m" href="/#models">Models</a>
+    <a class="hide-m" href="/#launch">Launch</a>
+    <a href="/docs">Docs</a>
+    <button class="btn sm em" id="connect" type="button">Connect</button>
+  </nav>
+</div></header>
+
+<section class="strip">
+  <canvas id="embers" aria-hidden="true"></canvas>
+  <div class="wrap">
+    <div class="th">
+      <div class="logo" id="tLogo">I</div>
+      <div><h1 id="tName">Loading</h1><div class="row" style="margin-top:8px"><span id="tSym" style="color:var(--dim)"></span><span class="tag" id="tModel" style="margin:0"></span></div></div>
+      <div class="acts" id="tActs" hidden><a class="btn em" id="tBuy" target="_blank" rel="noopener">Buy on Pons</a><a class="btn" id="tChart" target="_blank" rel="noopener">Chart</a></div>
+    </div>
+  </div>
+</section>
+
+<section class="band" style="padding-top:26px"><div class="wrap">
+  <div class="stats">
+    <div><small>Market cap</small><b id="sCap">0</b></div>
+    <div><small>Curve</small><b id="sCurve">0%</b></div>
+    <div><small>Burned</small><b id="sBurned">0</b></div>
+    <div><small>Fuel</small><b id="sFuel">0</b></div>
+  </div>
+  <div class="console">
+    <div class="box">
+      <div class="f"><label for="prompt">Prompt</label><textarea id="prompt" maxlength="4000" placeholder="Ask the model anything"></textarea></div>
+      <div class="row"><button class="btn em" id="ask" type="button">Pay and ask</button><button class="btn" id="retry" type="button" hidden>Retry last payment</button><span class="note" id="price" style="margin:0"></span></div>
+      <div class="err" id="aErr"></div>
+      <div class="answer dim" id="answer">The answer appears here</div>
+    </div>
+    <div class="box">
+      <div class="kv" style="margin-top:0">
+        <div><span>Model</span><b id="kModel">·</b></div>
+        <div><span>Context</span><b id="kCtx">·</b></div>
+        <div><span>Paid for prompts</span><b id="kFed">·</b></div>
+        <div><span>ETH burned</span><b id="kBurnEth">·</b></div>
+        <div><span>Creator</span><b id="kCreator">·</b></div>
+        <div><span>Contract</span><b id="kToken">·</b></div>
+      </div>
+      <p class="note" style="margin-top:16px">Fuel burns on the token's Pons curve, anyone can press it. The bought tokens go straight to the dead address</p>
+      <button class="btn" id="burn" type="button">Burn fuel</button>
+      <div class="err" id="bErr"></div>
+    </div>
+  </div>
+</div></section>
+
+<script type="module">
+import * as W from '/lib/wallet.js';
+import * as I from '/lib/inferno.js';
+import { embers } from '/lib/embers.js';
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const token = (location.pathname.match(/0x[0-9a-fA-F]{40}/) || new URLSearchParams(location.search).get('t') || [''])[0] || '';
+const fx = embers($('embers'), { density: 0.7 });
+let row = null, open = false, lastBurn = null;
+
+async function load() {
+  if (!/^0x[0-9a-fA-F]{40}$/.test(token)) { $('tName').textContent = 'Unknown token'; return; }
+  const r = await I.tokenRow(token).catch(e => ({ row: null, error: e.message }));
+  if (!r.row) { $('tName').textContent = r.error ? 'Listing is not connected yet' : 'Not listed on Inferno'; return; }
+  row = r.row;
+  document.title = `${row.name} · Inferno`;
+  $('tName').textContent = row.name;
+  $('tSym').textContent = '$' + row.symbol;
+  $('tModel').textContent = row.m ? row.m.name : row.model;
+  if (row.logo) { $('tLogo').style.backgroundImage = `url('${row.logo}')`; $('tLogo').textContent = ''; }
+  $('tActs').hidden = false;
+  $('tBuy').href = 'https://www.ponsfamily.com/launchpad/' + row.token;
+  $('tChart').href = 'https://dexscreener.com/robinhood/' + row.token;
+  $('sCap').textContent = row.mcapEth ? I.fmtEth(row.mcapEth) + ' ETH' : '·';
+  $('sCurve').textContent = row.graduated ? 'Graduated' : (row.progress * 100).toFixed(1) + '%';
+  $('sBurned').textContent = I.fmtTok(row.burnedTokens);
+  $('sFuel').textContent = I.fmtEth(I.eth(row.fuel)) + ' ETH';
+  $('kModel').textContent = row.model;
+  $('kCtx').textContent = row.m ? row.m.ctx + ' tokens' : '·';
+  $('kFed').textContent = I.fmtEth(I.eth(row.fedTotal)) + ' ETH';
+  $('kBurnEth').textContent = I.fmtEth(I.eth(row.burnedEth)) + ' ETH';
+  $('kCreator').textContent = I.short(row.creator);
+  $('kToken').innerHTML = `<a href="https://robinhoodchain.blockscout.com/token/${row.token}" target="_blank" rel="noopener">${I.short(row.token)}</a>`;
+  if (row.m) $('price').textContent = I.fmtEth(I.eth(I.priceWei(row.m))) + ' ETH per prompt';
+  const burned = I.eth(row.burnedEth);
+  if (lastBurn !== null && burned > lastBurn) fx.burst(120);
+  lastBurn = burned;
+  $('burn').disabled = !I.VAULT || !row.fuel || row.graduated;
+}
+
+async function paintStatus() {
+  const s = await I.status().catch(() => ({}));
+  open = !!s.prompts;
+  $('ask').disabled = !open;
+  if (!open) $('aErr').textContent = !I.VAULT ? 'Prompts open once the Inferno vault is deployed' : 'Prompts are not connected yet';
+  try {
+    const last = JSON.parse(localStorage.getItem('inferno:last') || 'null');
+    if (last && last.token.toLowerCase() === token.toLowerCase()) { $('retry').hidden = false; $('prompt').value = $('prompt').value || last.prompt; }
+  } catch {}
+}
+
+$('ask').onclick = async () => {
+  const b = $('ask'), text = $('prompt').value;
+  $('aErr').textContent = '';
+  if (!row || !row.m) return;
+  if (!text.trim()) { $('aErr').textContent = 'Write a prompt first'; return; }
+  b.disabled = true;
+  try {
+    if (!W.state().address) await W.connect();
+    $('answer').classList.add('dim');
+    const r = await I.ask(row.token, row.model, text, t => { b.textContent = t; $('answer').textContent = t; });
+    $('answer').classList.remove('dim');
+    $('answer').textContent = r.answer;
+    $('retry').hidden = true;
+    fx.burst(60);
+    load();
+  } catch (e) {
+    $('aErr').textContent = e.shortMessage || e.message;
+    try { if (localStorage.getItem('inferno:last')) $('retry').hidden = false; } catch {}
+  } finally { b.disabled = !open; b.textContent = 'Pay and ask'; }
+};
+$('retry').onclick = async () => {
+  const b = $('retry');
+  $('aErr').textContent = '';
+  try {
+    const last = JSON.parse(localStorage.getItem('inferno:last') || 'null');
+    if (!last) { b.hidden = true; return; }
+    b.disabled = true;
+    const r = await I.answer(last.token, last.hash, last.prompt, t => { $('answer').textContent = t; }, row && row.m);
+    $('answer').classList.remove('dim');
+    $('answer').textContent = r.answer;
+    b.hidden = true;
+  } catch (e) { $('aErr').textContent = e.shortMessage || e.message; }
+  finally { b.disabled = false; }
+};
+$('burn').onclick = async () => {
+  const b = $('burn');
+  $('bErr').textContent = '';
+  b.disabled = true;
+  try {
+    if (!W.state().address) await W.connect();
+    await I.burn(row.token, t => { b.textContent = t; });
+    fx.burst(200);
+    await load();
+  } catch (e) { $('bErr').textContent = e.shortMessage || e.message; }
+  finally { b.textContent = 'Burn fuel'; b.disabled = !row || !row.fuel; }
+};
+
+const paintWallet = () => { const a = W.state().address; $('connect').textContent = a ? I.short(a) : 'Connect'; };
+$('connect').onclick = () => W.state().address ? W.disconnect() : W.connect().catch(e => { $('aErr').textContent = e.shortMessage || e.message; });
+W.onChange(paintWallet);
+W.restore().then(paintWallet);
+load(); paintStatus();
+setInterval(() => { if (!document.hidden) load(); }, 20000);
+</script>
+</body>
+</html>

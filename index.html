@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+<script src="/config.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Inferno</title>
+<meta name="description" content="Launch a token for an AI model on Robinhood Chain, every prompt burns it">
+<meta property="og:title" content="Inferno">
+<meta property="og:description" content="Launch a token for an AI model, every prompt burns it">
+<meta property="og:image" content="/assets/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/assets/favicon.png">
+<link rel="apple-touch-icon" href="/assets/apple-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Doto:wght@700;900&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/inferno.css">
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <a class="brand" href="/"><img src="/assets/mark.webp" alt=""><b>INFERNO</b></a>
+  <nav>
+    <a class="hide-m" href="#models">Models</a>
+    <a class="hide-m" href="#launch">Launch</a>
+    <a href="/docs">Docs</a>
+    <button class="pill" id="caPill" type="button"><b id="caPillT">$INFERNO</b> <span id="caPillA">soon</span></button>
+    <a class="btn sm" id="xTop" target="_blank" rel="noopener" aria-label="X"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
+    <button class="btn sm em" id="connect" type="button">Connect</button>
+  </nav>
+</div></header>
+
+<section class="hero">
+  <canvas id="embers" aria-hidden="true"></canvas>
+  <div class="wrap">
+    <h1>INFERNO</h1>
+    <p>Launch a token for an AI model, every prompt burns it</p>
+    <div class="cta"><a class="btn em" href="#launch">Launch a token</a><a class="btn" href="#models">Models</a></div>
+    <div class="meters">
+      <div><small>Model tokens</small><b id="mTokens">0</b></div>
+      <div><small>ETH paid for prompts</small><b id="mFed">0</b></div>
+      <div><small>ETH burned</small><b id="mBurned">0</b></div>
+    </div>
+  </div>
+</section>
+
+<section class="band"><div class="wrap">
+  <div class="how">
+    <div><b>01</b><h4>Bind</h4><p>Pick a model and launch its token on Pons</p></div>
+    <div><b>02</b><h4>Prompt</h4><p>Anyone pays ETH per prompt to ask that model</p></div>
+    <div><b>03</b><h4>Burn</h4><p>80% buys the token on its curve and burns it, 20% burns $INFERNO</p></div>
+  </div>
+</div></section>
+
+<section class="band" id="models"><div class="wrap">
+  <div class="sh"><h2>Models</h2><p>Every token bound to a model, read from Robinhood Chain</p></div>
+  <div class="grid" id="tokens"><div class="empty">Loading</div></div>
+</div></section>
+
+<section class="band" id="launch"><div class="wrap">
+  <div class="sh"><h2>Launch</h2><p>A Pons V2 launch with its model written into the description</p></div>
+  <div class="launch">
+    <div class="box">
+      <div class="f"><label>Model</label></div>
+      <div class="models" id="modelPick"></div>
+      <div class="two"><div class="f"><label for="lName">Name</label><input id="lName" maxlength="32" placeholder="Opus Fire"></div><div class="f"><label for="lSym">Ticker</label><input id="lSym" maxlength="10" placeholder="OPUS"></div></div>
+      <div class="f"><label for="lDesc">Description</label><textarea id="lDesc" maxlength="200" placeholder="What this model token is for"></textarea></div>
+      <div class="f"><label for="lLogo">Logo</label><input id="lLogo" type="file" accept="image/png,image/jpeg,image/webp"></div>
+      <div class="two"><div class="f"><label for="lX">X</label><input id="lX" placeholder="https://x.com/…"></div><div class="f"><label for="lTg">Telegram</label><input id="lTg" placeholder="https://t.me/…"></div></div>
+      <div class="two"><div class="f"><label for="lWeb">Website</label><input id="lWeb" placeholder="https://…"></div><div class="f"><label for="lBuy">First buy, ETH</label><input id="lBuy" type="number" min="0" step="0.001" placeholder="0"></div></div>
+      <div class="note" id="lTerms">Reading Pons terms</div>
+      <button class="btn em" id="lGo" type="button">Launch</button>
+      <div class="err" id="lErr"></div>
+    </div>
+    <div class="box">
+      <div class="ct"><div class="logo" id="pvLogo">I</div><div><b id="pvName">Your model token</b><small id="pvSym">$TICKER</small></div></div>
+      <span class="tag" id="pvModel">Claude Opus 5</span>
+      <div class="kv">
+        <div><span>Supply</span><b id="kSupply">1B</b></div>
+        <div><span>Launch fee</span><b id="kFee">·</b></div>
+        <div><span>Curve fee</span><b id="kCurve">·</b></div>
+        <div><span>Graduates at</span><b id="kGrad">·</b></div>
+        <div><span>Prompt price</span><b id="kPrice">·</b></div>
+        <div><span>First buy</span><b id="kBuy">none</b></div>
+      </div>
+      <ul class="steps" id="steps"></ul>
+    </div>
+  </div>
+</div></section>
+
+<section class="band" id="sink"><div class="wrap">
+  <div class="sh"><h2>Sink</h2><p>20% of every prompt buys $INFERNO and burns it</p></div>
+  <div class="sink">
+    <div><small>Waiting to burn</small><b id="sFuel">0</b></div>
+    <div><small>Prompts paid</small><b id="sFed">0</b></div>
+    <div><small>$INFERNO burned</small><b id="sBurned">0</b></div>
+  </div>
+</div></section>
+
+<section class="final"><div class="wrap">
+  <div class="plate" id="plate" role="button" tabindex="0" aria-label="Copy contract address">
+    <div class="t">$INFERNO</div>
+    <div class="lab">CONTRACT</div>
+    <div class="ca" id="caAddr"></div>
+    <button class="copy" id="caCopy" type="button">[ COPY ]</button>
+    <div class="links">
+      <a class="btn em" id="buyLink" target="_blank" rel="noopener">Buy</a>
+      <a class="btn" id="xLink" target="_blank" rel="noopener" aria-label="X"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
+      <a class="btn" id="chartLink" target="_blank" rel="noopener">Chart</a>
+    </div>
+  </div>
+</div></section>
+
+<script type="module">
+import * as W from '/lib/wallet.js';
+import * as I from '/lib/inferno.js';
+import { embers } from '/lib/embers.js';
+import { parseEther } from 'https://cdn.jsdelivr.net/npm/viem@2.21.55/+esm';
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const S = window.SITE, CA = /^0x[0-9a-fA-F]{40}$/.test(S.CA) ? S.CA : null;
+const fx = embers($('embers'));
+
+/* links, header pill and the furnace plate */
+$('xTop').href = $('xLink').href = S.X_URL;
+$('buyLink').href = CA ? 'https://www.ponsfamily.com/launchpad/' + CA : window.PONS_HOME;
+$('chartLink').href = CA ? 'https://dexscreener.com/robinhood/' + CA : window.DEX_HOME;
+$('caPillA').textContent = CA ? I.short(CA) : 'soon';
+const caText = CA || 'soon';
+$('caAddr').classList.add(CA ? 'real' : 'soon');
+$('caAddr').innerHTML = [...caText].map((c, i) => `<span style="transition-delay:${i * 26}ms">${esc(c)}</span>`).join('');
+new IntersectionObserver((es, io) => { if (es[0].isIntersecting) { $('plate').classList.add('in'); io.disconnect(); } }, { threshold: 0.45 }).observe($('plate'));
+async function copyCA(e) {
+  if (e) e.stopPropagation();
+  const b = $('caCopy');
+  if (!CA) b.textContent = '[ NOT YET ]';
+  else { try { await navigator.clipboard.writeText(CA); b.textContent = '[ COPIED ]'; } catch { b.textContent = '[ COPY FAILED ]'; } }
+  setTimeout(() => b.textContent = '[ COPY ]', 1400);
+}
+$('caCopy').onclick = copyCA;
+$('caPill').onclick = copyCA;
+$('plate').addEventListener('click', e => { if (!e.target.closest('a')) copyCA(); });
+$('plate').addEventListener('keydown', e => { if (e.key === 'Enter') copyCA(); });
+
+/* meters, sink and the token grid; a rise in burned ETH throws sparks */
+let lastBurn = null;
+function onBurnTotal(v) { if (lastBurn !== null && v > lastBurn) fx.burst(120); lastBurn = v; }
+async function loadSink() {
+  const s = await I.sinkStats().catch(() => null);
+  if (!s) { $('sFuel').textContent = $('sFed').textContent = $('sBurned').textContent = 'soon'; return; }
+  $('sFuel').textContent = I.fmtEth(I.eth(s.sinkFuel)) + ' ETH';
+  $('sFed').textContent = I.fmtEth(I.eth(s.totalFed)) + ' ETH';
+  $('sBurned').textContent = s.inferno === '0x0000000000000000000000000000000000000000' ? 'soon' : I.fmtTok(s.burned);
+  $('mFed').textContent = I.fmtEth(I.eth(s.totalFed));
+}
+async function loadTokens() {
+  const { tokens, error } = await I.listTokens().catch(e => ({ tokens: [], error: e.message }));
+  $('mTokens').textContent = tokens.length;
+  const burned = tokens.reduce((a, t) => a + I.eth(t.burnedEth), 0);
+  $('mBurned').textContent = I.fmtEth(burned);
+  onBurnTotal(burned);
+  if (!I.VAULT) $('mFed').textContent = '0';
+  $('tokens').innerHTML = tokens.length ? tokens.map(t => `<a class="card" href="/m/${t.token}">
+    <div class="ct"><div class="logo" style="${t.logo ? `background-image:url('${esc(t.logo)}')` : ''}">${t.logo ? '' : esc((t.symbol || '?').slice(0, 1))}</div><div><b>${esc(t.name)}</b><small>$${esc(t.symbol)}</small></div></div>
+    <span class="tag ${t.graduated ? 'grad' : ''}">${esc(t.m ? t.m.name : t.model)}${t.graduated ? ' · graduated' : ''}</span>
+    <div class="rows">
+      <div><span>Market cap</span><b>${t.mcapEth ? I.fmtEth(t.mcapEth) + ' ETH' : '·'}</b></div>
+      <div><span>Burned</span><b>${I.fmtTok(t.burnedTokens)}</b></div>
+      <div><span>Fuel</span><b>${I.fmtEth(I.eth(t.fuel))} ETH</b></div>
+    </div>
+    <div class="bar"><i style="width:${(t.progress * 100).toFixed(1)}%"></i></div>
+  </a>`).join('') : `<div class="empty">${esc(error || 'No model tokens yet, launch the first one')}</div>`;
+}
+
+/* launch */
+let model = I.MODELS[0].id, logoData = '', terms = null;
+function paintModels() {
+  $('modelPick').innerHTML = I.MODELS.map(m => `<button type="button" class="model ${m.id === model ? 'on' : ''}" data-model="${esc(m.id)}"><b>${esc(m.name)}</b><small>${esc(m.lab)} · ${esc(m.ctx)}</small></button>`).join('');
+  const m = I.modelOf(model);
+  $('pvModel').textContent = m.name;
+  $('kPrice').textContent = I.fmtEth(I.eth(I.priceWei(m))) + ' ETH';
+}
+$('modelPick').addEventListener('click', e => { const b = e.target.closest('[data-model]'); if (!b) return; model = b.dataset.model; paintModels(); });
+paintModels();
+
+$('lName').oninput = () => $('pvName').textContent = $('lName').value.trim() || 'Your model token';
+$('lSym').oninput = () => $('pvSym').textContent = '$' + ($('lSym').value.trim() || 'TICKER');
+$('lLogo').onchange = async e => {
+  $('lErr').textContent = '';
+  try { logoData = await I.toWebp(e.target.files[0]); $('pvLogo').style.backgroundImage = `url("${logoData}")`; $('pvLogo').textContent = ''; }
+  catch (err) { $('lErr').textContent = err.message; }
+};
+function buyWei() { const v = $('lBuy').value.trim(); if (!v) return 0n; try { return parseEther(v); } catch { return null; } }
+$('lBuy').oninput = () => {
+  const w = buyWei();
+  if (w === null) { $('kBuy').textContent = 'invalid'; return; }
+  if (!w || !terms) { $('kBuy').textContent = w ? I.fmtEth(I.eth(w)) + ' ETH' : 'none'; return; }
+  const out = I.quoteOpening(terms.cfg, w);
+  $('kBuy').textContent = `${I.fmtEth(I.eth(w))} ETH ≈ ${(Number(out) / Number(terms.cfg.supply) * 100).toFixed(2)}%`;
+};
+I.launchTerms().then(t => {
+  terms = t;
+  $('kFee').textContent = I.fmtEth(I.eth(t.fee)) + ' ETH';
+  $('kCurve').textContent = (Number(t.cfg.curveFeeBps) / 100) + '%';
+  $('kGrad').textContent = I.fmtEth(I.eth(t.cfg.graduationThreshold)) + ' ETH';
+  $('kSupply').textContent = I.fmtTok(t.cfg.supply);
+  $('lTerms').textContent = t.enabled ? `You pay the Pons launch fee of ${I.fmtEth(I.eth(t.fee))} ETH plus any first buy, creator fees go to your wallet` : 'Pons launches are paused right now';
+}).catch(() => { $('lTerms').textContent = 'Could not read Pons terms, check your connection'; });
+
+function steps(list) { $('steps').innerHTML = list.map(s => `<li class="${s.c || ''}">${s.c === 'ok' ? '✓' : '·'} ${s.t}</li>`).join(''); }
+const PENDING = 'inferno:launch';
+async function finishListing(hash, token) {
+  steps([{ t: 'Launched on Robinhood Chain', c: 'ok' }, { t: 'Listing on Inferno', c: 'now' }]);
+  await I.register(hash);
+  try { localStorage.removeItem(PENDING); } catch {}
+  steps([{ t: 'Launched on Robinhood Chain', c: 'ok' }, { t: `Listed · <a href="/m/${token}">open ${esc(token ? I.short(token) : '')}</a>`, c: 'ok' }]);
+  loadTokens();
+}
+$('lGo').onclick = async () => {
+  const b = $('lGo'), err = $('lErr');
+  err.textContent = '';
+  try {
+    const name = $('lName').value.trim().replace(/\s+/g, ' '), symbol = $('lSym').value.trim();
+    if (!/^[A-Za-z0-9]+( [A-Za-z0-9]+)*$/.test(name) || name.length > 32) throw Error('Name is letters, digits and single spaces, up to 32');
+    if (!/^[A-Za-z0-9]{1,10}$/.test(symbol)) throw Error('Ticker is 1 to 10 letters or digits');
+    if (!logoData) throw Error('Add a logo');
+    const desc = $('lDesc').value.trim();
+    if (/https?:\/\/|www\./i.test(desc)) throw Error('Links go in the X, Telegram and website fields');
+    if (new TextEncoder().encode(I.describe(model, desc)).length > 256) throw Error('Description is too long');
+    const urlOk = v => !v || /^https:\/\/[^\s]+\.[^\s]+$/.test(v);
+    for (const [id, label] of [['lX', 'X'], ['lTg', 'Telegram'], ['lWeb', 'Website']]) if (!urlOk($(id).value.trim())) throw Error(label + ' must be an https link');
+    const devEth = buyWei();
+    if (devEth === null) throw Error('First buy is not a number');
+    b.disabled = true;
+    if (!W.state().address) { b.textContent = 'Connecting'; await W.connect(); }
+    b.textContent = 'Storing logo';
+    steps([{ t: 'Storing logo', c: 'now' }]);
+    const logo = await I.uploadLogo(logoData);
+    const r = await I.launch({ modelId: model, name, symbol, description: desc, logo, x: $('lX').value.trim(), telegram: $('lTg').value.trim(), website: $('lWeb').value.trim(), devEth }, t => { b.textContent = t; steps([{ t: 'Logo stored', c: 'ok' }, { t, c: 'now' }]); });
+    try { localStorage.setItem(PENDING, JSON.stringify(r)); } catch {}
+    fx.burst(160);
+    await finishListing(r.hash, r.token);
+  } catch (e) { err.textContent = e.shortMessage || e.message; }
+  finally { b.disabled = false; b.textContent = 'Launch'; }
+};
+try { const p = JSON.parse(localStorage.getItem(PENDING) || 'null'); if (p && p.hash) finishListing(p.hash, p.token).catch(e => $('lErr').textContent = e.message); } catch {}
+
+/* wallet */
+const paintWallet = () => { const a = W.state().address; $('connect').textContent = a ? I.short(a) : 'Connect'; };
+$('connect').onclick = () => W.state().address ? W.disconnect() : W.connect().catch(e => { $('lErr').textContent = e.shortMessage || e.message; });
+W.onChange(paintWallet);
+W.restore().then(paintWallet);
+
+loadTokens(); loadSink();
+setInterval(() => { if (!document.hidden) { loadTokens(); loadSink(); } }, 20000);
+</script>
+</body>
+</html>
